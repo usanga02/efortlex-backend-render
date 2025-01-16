@@ -1,0 +1,459 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                      String                     @id @default(uuid())
+  email                   String                     @unique
+  firstName               String
+  lastName                String
+  photoURL                String?
+  phoneNumber             String?
+  providers               PROVIDER[]
+  gender                  GENDER?
+  role                    ROLE[]
+  dateOfBirth             DateTime?
+  address                 String?
+  state                   String?
+  country                 String?
+  landmark                String?
+  twoFactorAuthentication TWO_FACTOR_AUTHENTICATION?
+  password                String?
+  emailVerified           Boolean
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+  employment              Employment?
+  nextofkin               Nextofkin?
+  notification            Notification?
+  document                Document?
+  apartments              Apartments[]
+  apartmentBookings       ApartmentBookings[]
+  ApartmentRequests       ApartmentRequests?
+  MaintenanceRequests     MaintenanceRequests?       @relation(fields: [maintenanceRequestsId], references: [id])
+  maintenanceRequestsId   String?
+  apartmentBookingsId     String?
+  Tenant                  Tenant[]
+  Messages                Messages[]
+  WishList                WishList[]
+  Wallet                  Wallet[]
+  WithdrawalHistory       WithdrawalHistory[]
+
+  @@map("users")
+}
+
+model Employment {
+  id               Int    @id @default(autoincrement())
+  userId           String @unique
+  employmentStatus String
+  employerName     String
+  jobTitle         String
+  address          String
+  monthlyIncome    String
+  user             User   @relation(fields: [userId], references: [id])
+
+  @@map("employments")
+}
+
+model Nextofkin {
+  id           Int    @id @default(autoincrement())
+  userId       String @unique
+  firstName    String
+  lastName     String
+  phoneNumber  String
+  address      String
+  email        String
+  relationship String
+  user         User   @relation(fields: [userId], references: [id])
+
+  @@map("nextofkins")
+}
+
+model Notification {
+  id                 Int                 @id @default(autoincrement())
+  userId             String              @unique
+  loginAlerts        NOTIFICATION_ENUM[] @default([])
+  bookingAlerts      NOTIFICATION_ENUM[] @default([])
+  newApartmentAlerts NOTIFICATION_ENUM[] @default([])
+  user               User                @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model Document {
+  id             Int     @id @default(autoincrement())
+  userId         String  @unique
+  type           String
+  documentNumber String?
+  frontUrl       String
+  backUrl        String
+  user           User    @relation(fields: [userId], references: [id])
+
+  @@map("documents")
+}
+
+model VerificationCode {
+  id        Int                    @id @default(autoincrement())
+  token     String
+  uid       String
+  type      VERIFICATION_CODE_TYPE
+  expiresAt DateTime
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  @@map("verification_codes")
+}
+
+model Apartments {
+  id                  String                   @id @default(uuid())
+  name                String
+  images              String[]                 @default([])
+  slug                String                   @unique
+  durationOfRent      DURATION_OF_RENT[]
+  apartmentType       APARTMENT_TYPE
+  rating              Float                    @default(0.0)
+  verified            Boolean                  @default(false)
+  numberOfBedroom     Int
+  numberOfBathroom    Int
+  description         String
+  archived            Boolean?                 @default(false)
+  isDeleted           Boolean?                 @default(false)
+  tags                APARTMENT_TAGS[]         @default([])
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  pricing             ApartmentPricing?
+  location            Location?
+  bookingOptions      ApartmentBookingOptions?
+  amenities           AMENITIES[]              @default([])
+  otherAmenities      String[]
+  houseRule           String[]
+  totalUnit           Int
+  avaliableUnits      Int
+  policies            String[]
+  tenants             Tenant[]
+  User                User?                    @relation(fields: [userId], references: [id])
+  userId              String?
+  apartmentBookings   ApartmentBookings[]
+  apartmentBookingsId String?
+
+  @@map("apartments")
+}
+
+model Tenant {
+  id                String          @id @default(uuid())
+  user              User?           @relation(fields: [userId], references: [id])
+  userId            String?
+  rentPrice         TenantRentPrice @relation(fields: [tenantRentPriceId], references: [id])
+  signedPolicies    String[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  Apartments        Apartments?     @relation(fields: [apartmentsId], references: [id])
+  apartmentsId      String?
+  payment           Payment[]
+  tenantRentPriceId String
+
+  @@map("tenants")
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  Tenant      Tenant?  @relation(fields: [tenantId], references: [id])
+  refId       String
+  tenantId    String?
+  userId      String
+  apartmentId String
+  purpose     String
+  amount      Float
+  nextDue     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("payments")
+}
+
+model TenantRentPrice {
+  id             String           @id @default(uuid())
+  durationOfRent DURATION_OF_RENT
+  rent           Float
+  serviceCharge  Float
+  cautionFee     Float
+  agreementFee   Float
+  total          Float
+  Tenant         Tenant[]
+
+  @@map("tenant_rent_price")
+}
+
+model ApartmentPricing {
+  id             String           @id @default(uuid())
+  apartmentId    String           @unique
+  durationOfRent DURATION_OF_RENT @default(ANNUALLY)
+  rent           Float
+  serviceCharge  Float
+  cautionFee     Float
+  agreementFee   Float
+  total          Float
+  apartment      Apartments       @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  @@map("apartment_pricings")
+}
+
+model Location {
+  id          String  @id @default(uuid())
+  apartmentId String  @unique
+  country     String
+  state       String
+  city        String
+  postalCode  String?
+  address     String
+
+  apartment Apartments @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  @@map("locations")
+}
+
+model ApartmentBookingOptions {
+  id          String     @id @default(uuid())
+  apartmentId String     @unique
+  installment Boolean    @default(false)
+  selfCheckIn Boolean    @default(false)
+  apartment   Apartments @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+
+  @@map("apartment_booking_options")
+}
+
+model ApartmentBookings {
+  id             String                    @id @default(uuid())
+  apartmentId    String
+  userId         String
+  status         APARTMENT_BOOKINGS_STATUS
+  inspectionDate DateTime
+  inspectionType INSPECTION_TYPE
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  user           User                      @relation(fields: [userId], references: [id])
+  apartment      Apartments                @relation(fields: [apartmentId], references: [id])
+
+  @@map("apartment_bookings")
+}
+
+model ApartmentRequests {
+  id            String                    @id @default(uuid())
+  userId        String                    @unique
+  location      String
+  apartmentType APARTMENT_TYPE
+  budget        Float
+  status        APARTMENT_REQUESTS_STATUS
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  user          User                      @relation(fields: [userId], references: [id])
+
+  @@map("apartment_requests")
+}
+
+model MaintenanceRequests {
+  id            String              @id @default(uuid())
+  userId        String
+  apartmentId   String
+  tenantId      String
+  landlordId    String
+  ticketId      String              @unique
+  description   String
+  urgency       MAINTENANCE_URGENCY
+  status        MAINTENANCE_STATUS
+  attachments   String[]
+  preferredDate DateTime
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  User          User[]
+
+  @@map("maintenance_requests")
+}
+
+model Wallet {
+  id            String              @id @default(uuid())
+  userId        String              @unique
+  withdrawalPin String
+  bankDetails   BankDetails[]
+  history       WithdrawalHistory[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  User          User                @relation(fields: [userId], references: [id])
+
+  @@map("wallets")
+}
+
+model BankDetails {
+  id            String   @id @default(uuid())
+  accountName   String
+  accountNumber String
+  bankName      String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  Wallet        Wallet?  @relation(fields: [walletId], references: [id])
+  walletId      String?
+
+  @@map("bank_details")
+}
+
+model WithdrawalHistory {
+  id          String            @id @default(uuid())
+  userId      String
+  type        String
+  amount      Float
+  status      WITHDRAWAL_STATUS
+  description String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  User        User              @relation(fields: [userId], references: [id])
+  Wallet      Wallet?           @relation(fields: [walletId], references: [id])
+  walletId    String?
+
+  @@map("withdrawal_histories")
+}
+
+model WishList {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  apartmentIds String[] @default([])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  User         User     @relation(fields: [userId], references: [id])
+
+  @@map("wishlists")
+}
+
+model Messages {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  subject   String
+  sendTo    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  User      User     @relation(fields: [userId], references: [id])
+
+  @@map("messages")
+}
+
+enum PROVIDER {
+  GOOGLE
+  EMAIL
+  APPLE
+}
+
+enum GENDER {
+  MALE
+  FEMALE
+}
+
+enum VERIFICATION_CODE_TYPE {
+  EMAIL
+  PASSWORD
+}
+
+enum ROLE {
+  TENANT
+  ADMIN
+  LANDLORD
+  AGENT
+}
+
+enum DURATION_OF_RENT {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUATERLY
+  SIX_MONTHS
+  ANNUALLY
+}
+
+enum APARTMENT_TYPE {
+  ONE_BEDROOM
+  SELF_CONTAINED
+  TWO_BEDROOM_OR_MORE
+  DUPLEX
+  BUNGALOW
+  MINI_FLAT
+  PENTHOUSE
+}
+
+enum APARTMENT_TAGS {
+  ROOMS
+  FLATS
+  ESTATE
+  DUPLEX
+  HOSTELS
+}
+
+enum APARTMENT_BOOKINGS_STATUS {
+  UNAVAILABLE
+  PENDING
+  SCHEDULED
+  CANCELED
+  SUCCESSFUL
+}
+
+enum APARTMENT_REQUESTS_STATUS {
+  FOUND
+  UNAVAILABLE
+  IN_PROGRESS
+}
+
+enum MAINTENANCE_STATUS {
+  RESOLVED
+  APPROVED
+  CANCELED
+  PENDING
+}
+
+enum MAINTENANCE_URGENCY {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum NOTIFICATION_ENUM {
+  EMAIL
+  PUSH
+}
+
+enum TWO_FACTOR_AUTHENTICATION {
+  SMS
+  EMAIL
+}
+
+enum AMENITIES {
+  bathtub
+  fireSmokeDetector
+  cctvCamera
+  sittingBar
+  acUnit
+  doorBell
+  laundry
+  waterHeater
+  outdoorGrill
+}
+
+enum INSPECTION_TYPE {
+  physical_tour
+  virtual_tour
+  send_me_a_video
+}
+
+enum WITHDRAWAL_STATUS {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// totalUnit           Int
+// avaliableUnits      Int
+// policies            String[]

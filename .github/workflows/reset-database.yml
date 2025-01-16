@@ -1,0 +1,54 @@
+name: Reset Database
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_COLOR: '3'
+
+permissions:
+  contents: write
+  packages: read
+  repository-projects: read
+
+jobs:
+  reset-database:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/npm
+          key: deps-node-modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run migration
+        run: |
+          npm run generate && npm run migrate:dev
+
+      - name: Run start
+        run: |
+          nohup npm run start:dev &
+          echo $! > server.pid
+          sleep 5
+
+      - name: Add Database initial data
+        run: |
+          curl -X POST http://localhost:4000/reset-database \
+          -H "Content-Type: application/json" \
+          -H "server_access_key: QoVlD9dCSqjEeE4nPzyhBa6qnDAUwlssn8l8xWFPEam26pVp5G9czPKX1sIh42ER"
+
+      - name: Stop the server
+        run: |
+          kill $(cat server.pid)
+          rm server.pid
